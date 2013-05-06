@@ -1413,7 +1413,6 @@ Proof.
       reflexivity.
     SCase "c5".
       rewrite <- IHR.
-      SearchAbout plus.
       apply plus_comm.
   Case "right -> left".
     generalize dependent n.
@@ -1444,10 +1443,10 @@ End R.
     type [X] and a property [P : X -> Prop], such that [all X P l]
     asserts that [P] is true for every element of the list [l]. *)
 
-Inductive all (X : Type) (P : X -> Prop) : list X -> Prop :=
-  | all_nil : all X P []
+Inductive all {X : Type} (P : X -> Prop) : list X -> Prop :=
+  | all_nil : all P []
   | all_intro : forall x : X, forall l : list X, 
-                P x -> all X P l -> all X P (x::l).
+                P x -> all P l -> all P (x::l).
 
 (** Recall the function [forallb], from the exercise
     [forall_exists_challenge] in chapter [Poly]: *)
@@ -1468,7 +1467,7 @@ Fixpoint forallb {X : Type} (test : X -> bool) (l : list X) : bool :=
 *)
 
 Definition allb {X : Type} (test : X -> bool) (l : list X) : Prop :=
-  all X (fun x : X => test x = true) l.
+  all (fun x : X => test x = true) l.
 
 Eval simpl in (forallb evenb [2,4,6,8]).
 Example test1 : allb evenb [2,4,6,8].
@@ -1522,7 +1521,7 @@ Qed.
 (** [] *)
 
 (** **** Exercise: 4 stars, advanced (filter_challenge) *)
-(** One of the main purposes of Coq is to prove that programs match
+(** **** One of the main purposes of Coq is to prove that programs match
     their specifications.  To this end, let's prove that our
     definition of [filter] matches a specification.  Here is the
     specification, written out informally in English.
@@ -1546,16 +1545,216 @@ Qed.
     for one list to be a merge of two others.  Do this with an
     inductive relation, not a [Fixpoint].)  *)
 
-(* FILL IN HERE *)
+Inductive order_merge {X : Type} : list X -> list X -> list X -> Prop :=
+  | merge_nil : @order_merge X [] [] []
+  | merge_lhd : forall x l1 l2 l3, order_merge l1 l2 l3 -> order_merge (x::l1) l2 (x::l3)
+  | merge_rhd : forall x l1 l2 l3, order_merge l1 l2 l3 -> order_merge l1 (x::l2) (x::l3).
+
+Example merge_ex1 : order_merge [1,6,2] [4,3] [1,4,6,2,3].
+Proof.
+  apply merge_lhd.
+  apply merge_rhd.
+  apply merge_lhd.
+  apply merge_lhd.
+  apply merge_rhd.
+  apply merge_nil.
+Qed.
+
+Lemma all_cons_list : forall {X : Type} (P : X -> Prop) (x : X) (l : list X),
+  all P (x::l) -> all P l /\ P x.
+Proof.
+  intros.
+  inversion H.
+  split.
+  apply H3.
+  apply H2.
+Qed.
+
+Lemma cons_injective : forall {X : Type} (l1 l2 : list X) (x : X),
+  l1 = l2 <-> x :: l1 = x :: l2.
+Proof.
+  intros.
+  split.
+  Case "left -> right".
+    intro.
+    rewrite H.
+    reflexivity.
+  Case "right -> left".
+    intros.
+    inversion H.
+    reflexivity.
+Qed.
+
+Theorem filter_challenge : forall {X : Type} (test : X -> bool) (l l1 l2 : list X),
+  order_merge l1 l2 l ->
+  all (fun x => test x = true) l1 ->
+  all (fun x => test x = false) l2 ->
+  filter test l = l1.
+Proof.
+  intros X test l l1 l2.
+  intros H.
+  induction H as [|y l1 l2 l |y l1 l2 l].
+  Case "[] [] []".
+    intros.
+    reflexivity.
+  Case "x::l1 l2 l".
+    intros H1 H2.
+    apply all_cons_list in H1.
+    inversion H1.
+    simpl.
+    rewrite -> H3.
+    apply cons_injective.
+    apply IHorder_merge.
+    apply H0.
+    apply H2.
+  Case "l1 x::l2 l".
+    intros H1 H2.
+    apply all_cons_list in H2.
+    inversion H2.
+    simpl.
+    rewrite -> H3.
+    apply IHorder_merge.
+    apply H1.
+    apply H0.
+Qed.    
+
 (** [] *)
 
 (** **** Exercise: 5 stars, advanced, optional (filter_challenge_2) *)
-(** A different way to formally characterize the behavior of [filter]
+(** **** A different way to formally characterize the behavior of [filter]
     goes like this: Among all subsequences of [l] with the property
     that [test] evaluates to [true] on all their members, [filter test
     l] is the longest.  Express this claim formally and prove it. *)
+Inductive test_subseq {X:Type} (test:X->Prop) : list X -> list X -> Prop :=
+  | test_sub_nil : test_subseq test [] []
+  | test_sub_drop : forall (x:X) (sub l:list X), 
+                    test_subseq test sub l -> test_subseq test sub (x::l)
+  | test_sub_match : forall (x:X) (sub l:list X),
+                     test_subseq test sub l -> test x ->test_subseq test (x::sub) (x::l).
 
-(* FILL IN HERE *)
+Lemma le_Sn_m : forall n m : nat,
+  S n <= m -> n <= m.
+Proof.
+  intros.
+  induction H.
+  Case "le_n".
+    apply le_S.
+    apply le_n.
+  Case "le_S".
+    apply le_S.
+    apply IHle.
+Qed.
+
+Lemma le_n_Sm : forall n m : nat,
+  n <= m -> n <= S m.
+Proof.
+  intros.
+  induction H.
+  Case "le_n".
+    apply le_S.
+    apply le_n.
+  Case "le_S".
+    apply le_S.
+    apply IHle.
+Qed.      
+
+Lemma le_Sn_Sm : forall n m : nat,
+  n <= m -> S n <= S m.
+Proof.
+  intros.
+  induction H.
+  Case "le_n".
+    apply le_n.
+  Case "le_S".
+    apply le_S.
+    apply IHle.
+Qed.  
+
+Theorem filter_challenge2 : forall {X:Type} (test:X->bool) (sub l:list X),
+  test_subseq (fun x:X => test x = true) sub l ->
+  length sub <= length (filter test l).
+Proof.
+  intros.
+  induction H.
+  Case "test_sub_nil".
+    reflexivity.
+  Case "test_sub_drop".
+    simpl.
+    remember (test x) as test_x.
+    destruct test_x.
+    SCase "test x = true".
+      simpl.
+      apply le_n_Sm.
+      apply IHtest_subseq.
+    SCase "test x = false".
+      apply IHtest_subseq.
+  Case "test_sub_match".
+    simpl.
+    rewrite -> H0.
+    simpl.
+    apply le_Sn_Sm.
+    apply IHtest_subseq.
+Qed.
+
+Lemma ble_Sn_m : forall n m : nat,
+  ble_nat (S n) m = true -> ble_nat n m = true.
+Proof.
+  induction n.
+  Case "n = 0".
+    intros.
+    reflexivity.
+  Case "n = S n".
+    intros.
+    destruct m.
+    SCase "m = 0".
+      inversion H.
+    SCase "m = S m".
+      simpl.
+      apply IHn.
+      apply H.
+Qed.
+    
+Lemma ble_n_Sm : forall n m : nat,
+  ble_nat n m = true -> ble_nat n (S m) = true.
+Proof.
+  intros.
+  generalize dependent m.
+  induction n.
+  Case "n = 0".
+    intros.
+    reflexivity.
+  Case "n = S n".
+    intros.
+    apply ble_Sn_m in H.
+    simpl.
+    apply H.
+Qed.      
+    
+Theorem filter_challenge2' : forall {X:Type} (test:X->bool) (sub l:list X),
+  test_subseq (fun x:X => test x = true) sub l ->
+  ble_nat (length sub) (length (filter test l)) = true.
+Proof.
+  intros.
+  induction H.
+  Case "test_sub_nil".
+    reflexivity.
+  Case "test_sub_drop".
+    simpl.
+    remember (test x) as test_x.
+    destruct test_x.
+    SCase "test x = true".
+      simpl.
+      apply ble_n_Sm.
+      apply IHtest_subseq.
+    SCase "test x = false".
+      apply IHtest_subseq.
+  Case "test_sub_match".
+    simpl.
+    rewrite -> H0.
+    simpl.
+    apply IHtest_subseq.
+Qed.
+
 (** [] *)
 
 (** **** Exercise: 4 stars, advanced (no_repeats) *)
@@ -1574,18 +1773,71 @@ Inductive appears_in {X:Type} (a:X) : list X -> Prop :=
 Lemma appears_in_app : forall {X:Type} (xs ys : list X) (x:X), 
      appears_in x (xs ++ ys) -> appears_in x xs \/ appears_in x ys.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X xs.
+  induction xs as [|x1 xs'].
+  Case "xs = []".
+    intros.
+    simpl in H.
+    right.
+    apply H.
+  Case "xs = x1::xs'".
+    intros.
+    inversion H.
+    SCase "ai_here".
+      left.
+      apply ai_here.
+    SCase "ai_later".
+      apply IHxs' in H1.
+      inversion H1.
+      SSCase "left".
+        left.
+        apply ai_later.
+        apply H3.
+      SSCase "right".
+        right.
+        apply H3.
+Qed.
 
 Lemma app_appears_in : forall {X:Type} (xs ys : list X) (x:X), 
      appears_in x xs \/ appears_in x ys -> appears_in x (xs ++ ys).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X xs.
+  induction xs as [|y xs'].
+  Case "xs = []".
+    intros.
+    inversion H.
+    SCase "left".
+      inversion H0.
+    SCase "right".
+      apply H0.
+  Case "xs = y::xs'".
+    intros.
+    inversion H.
+    SCase "left".
+      inversion H0.
+      SSCase "ai_here".
+        apply ai_here.
+      SSCase "ai_later".
+        apply ai_later.
+        apply IHxs'.
+        left.
+        apply H2.
+    SCase "right".
+      apply ai_later.
+      apply IHxs'.
+      right.
+      apply H0.
+Qed.
 
 (** Now use [appears_in] to define a proposition [disjoint X l1 l2],
     which should be provable exactly when [l1] and [l2] are
     lists (with elements of type X) that have no elements in common. *)
 
-(* FILL IN HERE *)
+Inductive disjoint {X : Type} (l1 l2 : list X) : Prop :=
+  | dsjt : (forall (x:X) , appears_in x l1 -> ~ appears_in x l2) -> disjoint l1 l2.
+
+Definition disjoint' {X : Type} (x:X) (l1 l2 : list X) : Prop :=
+  appears_in x l1 -> ~ appears_in x l2.
 
 (** Next, use [appears_in] to define an inductive proposition
     [no_repeats X l], which should be provable exactly when [l] is a
@@ -1594,12 +1846,76 @@ Proof.
     [no_repeats bool []] should be provable, while [no_repeats nat
     [1,2,1]] and [no_repeats bool [true,true]] should not be.  *)
 
-(* FILL IN HERE *)
+Inductive no_repeats {X : Type} : list X -> Prop :=
+  | nr_nil : no_repeats []
+  | nr_cons : forall (x : X) (l : list X), no_repeats l -> ~ appears_in x l -> no_repeats (x::l).
 
 (** Finally, state and prove one or more interesting theorems relating
     [disjoint], [no_repeats] and [++] (list append).  *)
 
-(* FILL IN HERE *)
+Lemma disjoint_cons : forall {X : Type} (x : X) (l1 l2 : list X),
+  disjoint (x::l1) l2 -> disjoint l1 l2.
+Proof.
+  intros.
+  induction l1 as [|y l1'].
+  Case "l1 = []".
+    apply dsjt.
+    intros.
+    inversion H0.
+  Case "l1 = y::l1'".
+    apply dsjt.
+    intros.
+    inversion H.
+    apply H1.
+    apply ai_later.
+    apply H0.
+Qed.    
+
+Lemma not_appears_app : forall {X : Type} (x : X) (l1 l2 : list X),
+   ~ appears_in x l1 -> ~ appears_in x l2 -> ~ appears_in x (l1++l2).
+Proof.
+  intros.
+  unfold not.
+  intros.
+  apply appears_in_app in H1.
+  inversion H1.
+  Case "left".
+    unfold not in H.
+    apply H.
+    apply H2.
+  Case "right".
+    unfold not in H0.
+    apply H0.
+    apply H2.
+Qed.     
+
+Theorem no_repeats_no_joint : forall {X:Type} (l1 l2 : list X),
+  no_repeats l1 -> no_repeats l2 -> disjoint l1 l2 ->
+  no_repeats (l1++l2).
+Proof.
+  intros X l1.
+  induction l1 as [|x l1'].
+  Case "l1 = []".
+    intros l2 H1 H2 H.
+    simpl.
+    apply H2.
+  Case "l1 = x::l1'".
+    intros l2 H1 H2 H.
+    apply nr_cons.
+    apply IHl1'.
+    inversion H1.
+    apply H4.
+    apply H2.
+    apply disjoint_cons in H.
+    apply H.
+    apply not_appears_app.
+    inversion H1.
+    apply H5.
+    inversion H.
+    apply H0.
+    apply ai_here.
+Qed.          
+    
 (** [] *)
 
 (** **** Exercise: 2 stars, optional (le_exercises) *)
@@ -1610,52 +1926,198 @@ Proof.
 Theorem O_le_n : forall n,
   0 <= n.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  induction n.
+  Case "n = 0".
+    apply le_n.
+  Case "n = S n".
+    apply le_S.
+    apply IHn.
+Qed.
 
 Theorem n_le_m__Sn_le_Sm : forall n m,
   n <= m -> S n <= S m.
 Proof. 
-  (* FILL IN HERE *) Admitted.
+  apply le_Sn_Sm.
+Qed.
 
 Theorem Sn_le_Sm__n_le_m : forall n m,
   S n <= S m -> n <= m.
 Proof. 
   intros n m.  generalize dependent n.  induction m. 
-  (* FILL IN HERE *) Admitted. 
+  Case "m = 0".
+    intros.
+    inversion H.
+    SCase "le_n".
+      reflexivity.
+    SCase "le_S".
+      inversion H1.
+  Case "m = S m".
+    intros.
+    inversion H.
+    SCase "le_n".
+      reflexivity.
+    SCase "le_S".
+      apply IHm in H1.
+      apply le_n_Sm.
+      apply H1.
+Qed.
 
 Theorem le_plus_l : forall a b,
   a <= a + b.
 Proof. 
-  (* FILL IN HERE *) Admitted.
+  intros.
+  induction b.
+  Case "b = 0".
+    rewrite -> plus_0_r.
+    apply le_n.
+  Case "b = S b".
+    rewrite <- plus_n_Sm.
+    apply le_S.
+    apply IHb.
+Qed.      
 
+Lemma le_lt : forall n m : nat,
+  n <= m -> n < S m.
+Proof.
+  intros.
+  inversion H.
+  Case "le_n".
+    apply le_n.
+  Case "le_S".
+    apply le_S.
+    apply n_le_m__Sn_le_Sm.
+    apply H0.
+Qed.
+
+Lemma lt_le : forall n m : nat,
+  n < m -> n <= m.
+Proof.
+  intros.
+  inversion H.
+  Case "le_n".
+    apply le_S.
+    apply le_n.
+  Case "le_S".
+    apply le_S.
+    apply le_Sn_m.
+    apply H0.
+Qed.
+    
 Theorem plus_lt : forall n1 n2 m,
   n1 + n2 < m ->
   n1 < m /\ n2 < m.
 Proof. 
- (* FILL IN HERE *) Admitted.
+  intros.
+  induction H.
+  Case "le_n".
+    split.
+    SCase "left".
+      apply le_lt.
+      apply le_plus_l.
+    SCase "right".
+      apply le_lt.
+      rewrite -> plus_comm.
+      apply le_plus_l.
+  Case "le_S".
+    split.
+    SCase "left".
+      inversion IHle.
+      apply le_lt.
+      apply lt_le.
+      apply H0.
+    SCase "right".
+      inversion IHle.
+      apply le_lt.
+      apply lt_le.
+      apply H1.
+Qed.  
 
 Theorem lt_S : forall n m,
   n < m ->
   n < S m.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros.
+  inversion H.
+  Case "le_n".
+    apply le_S.
+    apply le_n.
+  Case "le_S".
+    apply le_S.
+    apply le_n_Sm.
+    apply H0.
+Qed.
 
 Theorem ble_nat_true : forall n m,
   ble_nat n m = true -> n <= m.
 Proof. 
-  (* FILL IN HERE *) Admitted.
+  intros n.
+  induction n.
+  Case "n = 0".
+    intros.
+    apply O_le_n.
+  Case "n = S n".
+    intros.
+    destruct m.
+    SCase "m = 0".
+      inversion H.
+    SCase "m = S m".
+      apply n_le_m__Sn_le_Sm.
+      apply IHn.
+      simpl in H.
+      apply H.
+Qed.      
 
 Theorem ble_nat_n_Sn_false : forall n m,
   ble_nat n (S m) = false ->
   ble_nat n m = false.
 Proof. 
-  (* FILL IN HERE *) Admitted.
+  intros n.
+  induction n.
+  Case "n = 0".
+    intros.
+    inversion H.
+  Case "n = S n".
+    intros.
+    simpl in H.
+    destruct m.
+    SCase "m  = 0".
+      reflexivity.
+    SCase "m = S m".
+      simpl.
+      apply IHn.
+      apply H.
+Qed.    
 
 Theorem ble_nat_false : forall n m,
   ble_nat n m = false -> ~(n <= m).
 Proof.
-  (* Hint: Do the right induction! *)
-  (* FILL IN HERE *) Admitted.
+  intros n m.
+  generalize dependent n.
+  induction m.
+  Case "m = 0".
+    intros.
+    unfold not.
+    intros.
+    inversion H0.
+    rewrite -> H1 in H.
+    inversion H.
+  Case "m = S m".
+    intros.
+    unfold not.
+    intros.
+    inversion H0.
+    SCase "le_n".
+      rewrite -> H1 in H.
+      rewrite <- ble_nat_refl in H.
+      inversion H.
+    SCase "le_S".
+      unfold not in IHm.
+      apply (IHm n).
+      apply ble_nat_n_Sn_false.
+      apply H.
+      apply H2.
+Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars (nostutter) *)
@@ -1672,8 +2134,10 @@ Proof.
     does not stutter.) *)
 
 Inductive nostutter:  list nat -> Prop :=
- (* FILL IN HERE *)
-.
+  | nst_nil : nostutter []
+  | nst_one : forall (x : nat), nostutter [x]
+  | nst_cons : forall (x y : nat) (l : list nat), nostutter (y::l) -> ~ x = y ->
+               nostutter (x::y::l).
 
 (** Make sure each of these tests succeeds, but you are free
     to change the proof if the given one doesn't work for you.
@@ -1688,32 +2152,20 @@ Inductive nostutter:  list nat -> Prop :=
     tactics.  *)
 
 Example test_nostutter_1:      nostutter [3,1,4,1,5,6].
-(* FILL IN HERE *) Admitted.
-(* 
-  Proof. repeat constructor; apply beq_false_not_eq; auto. Qed.
-*)
+Proof. repeat constructor; apply beq_false_not_eq; auto. Qed.
 
 Example test_nostutter_2:  nostutter [].
-(* FILL IN HERE *) Admitted.
-(* 
-  Proof. repeat constructor; apply beq_false_not_eq; auto. Qed.
-*)
+Proof. repeat constructor; apply beq_false_not_eq; auto. Qed.
 
 Example test_nostutter_3:  nostutter [5].
-(* FILL IN HERE *) Admitted.
-(* 
-  Proof. repeat constructor; apply beq_false_not_eq; auto. Qed.
-*)
+Proof. repeat constructor; apply beq_false_not_eq; auto. Qed.
 
 Example test_nostutter_4:      not (nostutter [3,1,1,4]).
-(* FILL IN HERE *) Admitted.
-(* 
-  Proof. intro.
+Proof. intro.
   repeat match goal with 
     h: nostutter _ |- _ => inversion h; clear h; subst 
   end.
-  contradiction H1; auto. Qed.
-*)
+  contradiction H5; auto. Qed.
 (** [] *)
 
 (** **** Exercise: 4 stars, advanced (pigeonhole principle) *)
@@ -1729,35 +2181,168 @@ Example test_nostutter_4:      not (nostutter [3,1,1,4]).
 Lemma app_length : forall {X:Type} (l1 l2 : list X),
   length (l1 ++ l2) = length l1 + length l2. 
 Proof. 
-  (* FILL IN HERE *) Admitted.
+  intros X l1 l2. 
+  induction l1 as [| n l1'].
+  Case "l1 = nil".
+    reflexivity.
+  Case "l1 = cons".
+    simpl. 
+    rewrite -> IHl1'. 
+    reflexivity. 
+Qed.
 
+Print appears_in.
 Lemma appears_in_app_split : forall {X:Type} (x:X) (l:list X),
   appears_in x l -> 
   exists l1, exists l2, l = l1 ++ (x::l2).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X x l.
+  induction l as [|y l'].
+  Case "l = []".
+    intros.
+    inversion H.
+  Case "l = y::l'".
+    intros.
+    inversion H.
+      SCase "ai_here".
+        exists [].
+        exists l'.
+        reflexivity.
+      SCase "ai_later".
+        apply IHl' in H1.
+        inversion H1 as [sl1 Hl2].
+        inversion Hl2 as [sl2 Hl].
+        exists (y::sl1).
+        exists sl2.
+        rewrite -> Hl.
+        reflexivity.
+Qed.    
 
 (** Now define a predicate [repeats] (analogous to [no_repeats] in the
    exercise above), such that [repeats X l] asserts that [l] contains
    at least one repeated element (of type [X]).  *)
 
 Inductive repeats {X:Type} : list X -> Prop :=
-  (* FILL IN HERE *)
-.
+  | rp_init : forall (x : X) (l : list X), appears_in x l -> repeats (x::l)
+  | rp_cons : forall (x : X) (l : list X), repeats l -> repeats (x::l).
 
 (** Now here's a way to formalize the pigeonhole principle. List [l2]
    represents a list of pigeonhole labels, and list [l1] represents an
    assignment of items to labels: if there are more items than labels,
    at least two items must have the same label.  You will almost
    certainly need to use the [excluded_middle] hypothesis. *)
+Print excluded_middle.
+
+Lemma diff_ai : forall (X : Type) (x y : X) (l1 l2 : list X), 
+  excluded_middle -> 
+  x <> y -> 
+  appears_in y (l1 ++ x :: l2) -> 
+  appears_in y (l1 ++ l2).
+Proof.
+  induction l1 as [|x1 l1'].
+  Case "l1 = []".
+    intros.
+    simpl.
+    simpl in H1.
+    inversion H1.
+    SCase "ai_here".
+      apply ex_falso_quodlibet.
+      apply H0.
+      symmetry.
+      apply H3.
+    SCase "ai_later".
+      apply H3.
+  Case "l1 = x1::l1'".
+    intros.
+    simpl.
+    assert ((y = x1) \/ ~(y = x1)).
+    SCase "Proof of assert".
+      unfold excluded_middle in H.
+      apply H.
+    inversion H2.
+    SCase "left : y = x1".
+      rewrite -> H3.
+      apply ai_here.
+    SCase "right : y <> x1".
+      apply ai_later.
+      inversion H1.
+      SSCase "ai_here".
+        apply ex_falso_quodlibet.
+        apply H3.
+        apply H5.
+      SSCase "ai_later".
+        apply IHl1'.
+        apply H.
+        apply H0.
+        apply H5.
+Qed.
 
 Theorem pigeonhole_principle: forall {X:Type} (l1 l2:list X),
   excluded_middle -> 
   (forall x, appears_in x l1 -> appears_in x l2) -> 
   length l2 < length l1 -> 
   repeats l1.  
-Proof.  intros X l1. induction l1.
-  (* FILL IN HERE *) Admitted.
+Proof. intros X l1. induction l1 as [|x1 l1'].
+  Case "l1 = []".
+    intros.
+    inversion H1.
+  Case "l1 = x1::l1'".
+    intros.
+    unfold excluded_middle in H.
+    assert ((appears_in x1 l1') \/ ~(appears_in x1 l1')).
+    apply H.
+    inversion H2.
+    SCase "left : x1 in l1'".
+      apply rp_init.
+      apply H3.
+    SCase "right : x1 not in l1'".
+      apply rp_cons.
+      assert (exists t1, exists t2, l2 = t1 ++ (x1::t2)).
+      SSCase "proof of assert".
+        apply appears_in_app_split.
+        apply H0.
+        apply ai_here.
+      inversion H4 as [t1].
+      inversion H5 as [t2].
+      apply (IHl1' (t1 ++ t2)).
+      unfold excluded_middle.
+      apply H.
+      intros.
+      assert ((x = x1) \/ ~(x = x1)).
+      SSCase "Proof of assert".
+        apply H.
+      inversion H8.
+      SSCase "left : x = x1".
+        apply ex_falso_quodlibet.
+        apply H3.
+        rewrite -> H9 in H7.
+        apply H7.
+      SSCase "right : x <> x1".
+        assert (appears_in x1 l2).
+        SSSCase "Proof of assert".
+          apply H0.
+          apply ai_here.
+          apply (diff_ai X x1 x t1 t2).
+          unfold excluded_middle.
+          apply H.
+          unfold not.
+          intros.
+          rewrite -> H11 in H9.
+          unfold not in H9.
+          apply H9.
+          reflexivity.
+          rewrite <- H6.
+          apply H0.
+          apply ai_later.
+          apply H7.
+          rewrite -> app_length.
+          rewrite -> H6 in H1.
+          rewrite -> app_length in H1.
+          simpl in H1.
+          rewrite <- plus_n_Sm in H1.
+          apply Sn_le_Sm__n_le_m in H1.
+          apply H1.
+Qed. 
 (** [] *)
 
 (* $Date: 2013-02-10 18:08:54 -0500 (Sun, 10 Feb 2013) $ *)
