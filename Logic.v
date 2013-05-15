@@ -2,7 +2,7 @@
 
 (** * Logic: Logic in Coq *)
 
-Require Export MoreProp. 
+Require Export MoreProp.
 
 (** Coq's built-in logic is very small: the only primitives are
     [Inductive] definitions, universal quantification ([forall]), and
