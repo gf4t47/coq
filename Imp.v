@@ -2222,7 +2222,6 @@ Proof.
     rewrite (IHe1 st nList (s_compile e2 ++ [SPlus] ++ iList)).
     rewrite (IHe2 st (aeval st e1 :: nList) ([SPlus] ++ iList)).
     reflexivity.
-    SearchAbout app.
     rewrite <- app_assoc.
     rewrite <- app_assoc. 
     reflexivity.
@@ -2234,7 +2233,6 @@ Proof.
     rewrite (IHe1 st nList (s_compile e2 ++ [SMinus] ++ iList)).
     rewrite (IHe2 st (aeval st e1 :: nList) ([SMinus] ++ iList)).
     reflexivity.
-    SearchAbout app.
     rewrite <- app_assoc.
     rewrite <- app_assoc. 
     reflexivity.
@@ -2246,7 +2244,6 @@ Proof.
     rewrite (IHe1 st nList (s_compile e2 ++ [SMult] ++ iList)).
     rewrite (IHe2 st (aeval st e1 :: nList) ([SMult] ++ iList)).
     reflexivity.
-    SearchAbout app.
     rewrite <- app_assoc.
     rewrite <- app_assoc. 
     reflexivity.
