@@ -12,3 +12,5 @@ Theorem imp': forall (P Q : Prop),
 Proof.
   tauto.
 Qed.
+
+(** omega *)
