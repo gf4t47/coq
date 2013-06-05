@@ -104,7 +104,14 @@ Definition as4 : Assertion :=
 Definition as5 : Assertion := fun st => True.
 Definition as6 : Assertion := fun st => False.
 
-(* FILL IN HERE *)
+(** **** answer
+    as1 : X is eq to 3 in the current state.
+    as2 : X is less or eq to Y int the current state.
+    as3 : X is eq to 3 or X is less or eq to Y in the current state.
+    as4 : Z square is less or eq to X and (Z + 1) square is not less or eq to X in the current state.
+    as5 : Assertion is always true.
+    as6 : Assertion is always false.
+**)
 
 End ExAssertions.
 (** [] *)
@@ -202,16 +209,17 @@ Notation "{{ P }}  c  {{ Q }}" :=
 
  *)
 
-
-(** [] *)
-
-
-
-
-
-
-
-
+(** **** answer
+   1) [X] will be eq to 5 after execution of [c].
+   2) [X] is any [nat] at the beginning then [X] will be increased 5 after execution of [c].
+   3) [X] is less or eq to [Y] at the beginning and [x] will be greater or eq to [Y] 
+      after execution of [c].
+   4) [c] can not be executed otherwise Assertion will always fail.
+   5) [X] is eq to [m] at the beginning and [Y] will be the real part of [m]
+      after execution of [c].
+   6) [Z] square is less or eq to [m] and [Z + 1] square is not less or eq to [m]
+      after execution of [c].
+**)
 
 (** **** Exercise: 1 star, optional (valid_triples) *)
 (** Which of the following Hoare triples are _valid_ -- i.e., the
@@ -239,7 +247,9 @@ Notation "{{ P }}  c  {{ Q }}" :=
       {{X = 100}}
 
 *)
-(* FILL IN HERE *)
+(** **** answer
+  1 2 3 4 6 7 8 
+**)
 (** [] *)
 
 (** (Note that we're using informal mathematical notations for
@@ -257,7 +267,7 @@ Proof.
   intros P Q c H. unfold hoare_triple.
   intros st st' Heval HP.
   apply H.  Qed.
-
+ 
 Theorem hoare_pre_false : forall (P Q : Assertion) c,
   (forall st, ~(P st)) ->
   {{P}} c {{Q}}.

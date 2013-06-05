@@ -1,6 +1,6 @@
+(** **** Ke Ding #8318 **)
+
 (** * Equiv: Program Equivalence *)
-
-
 
 Require Export Imp.
 
@@ -2123,7 +2123,6 @@ Lemma p3_nonterm : forall st st',
     simpl in H0.
     apply negb_true_iff in H.
     simpl in H.
-    SearchAbout update.
     rewrite update_neq in H0.
     rewrite H0 in H.
     inversion H.
@@ -2696,3 +2695,4 @@ Proof.
 Qed.    
 (** [] *)
 
+(** **** Ke Ding #8318 **)
