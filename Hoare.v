@@ -891,9 +891,9 @@ Qed.
 
 
 (**** ** answer
-  [a] is any [aexp] so it is possible [a] include [X], after excute [X ::= (ANum 3)] command
-  the value of [X] may change therefore the value of [a] may change. Then it's possible [a != n],
-  so assign [a] to [Y] now cannot be sure that [Y = n].
+  [a] is any [aexp] so it is possible [a] include [X], after excute [X ::= (ANum 3)]
+  the value of [X] may change therefore the value of [a] may change. 
+  Then it's possible [a != n],so assign [a] to [Y] now cannot be sure that [Y = n].
 **)
 
 (* ####################################################### *) 
